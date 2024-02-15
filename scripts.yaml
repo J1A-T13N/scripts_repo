@@ -1,0 +1,452 @@
+line_bubble_template:
+  alias: Line Bubble Template
+  fields:
+    title:
+      selector:
+        template: {}
+      required: true
+      name: 標題
+      description: 建議輸入觸發來源，例如：「空氣品質通知」，方便識別該訊息
+    description:
+      selector:
+        template: null
+      name: 敘述
+      description: 可作為訊息有效時間或發送時間
+      default: |-
+        {{
+          "發送時間：" + as_timestamp(now())|timestamp_custom('%H:%M:%S')
+        }}
+      required: true
+    image:
+      selector:
+        text: null
+      name: 圖片
+      default: Home_Assistant_Logo.png
+      required: true
+      description: 顯示於訊息中的插圖，便於辨別訊息概要
+    alternative:
+      selector:
+        template: null
+      name: 代替文字
+      description: 未開啟訊息前，所顯示的代替文字
+      required: true
+    text:
+      selector:
+        template: null
+      name: 訊息內容
+      description: 要發送的訊息內容
+      required: true
+    detail:
+      selector:
+        template: null
+      name: 更多資訊
+      description: 訊息內容的詳細資訊補充(限JSON格式)
+      default: |-
+        {%- set result = namespace(fields=[]) %}
+        {% set separator = {
+          "type": "separator",
+          "margin": "md"
+        } %}
+        ### 可以透過 filed 傳遞 list
+        {%- set detail_flieds_example = {
+          "author": "作者1",
+          "message": "訊息1"
+        },{
+          "author": "作者2",
+          "message": "訊息2"
+        } %}
+        {% for detail in detail_flieds_example -%}
+          {% set field = {
+            "type": "text",
+            "text": detail.author ~ 'Say: (' ~ detail.message ~ ' )',
+            "margin": "md",
+            "wrap": true
+          } %}
+          {% set result.fields = result.firesultelds + [field] %}
+          {% set result.fields = result.fields + [separator] %}
+        {%- endfor %} {{ result.fields|to_json }}
+    actions:
+      selector:
+        text:
+          autocomplete: "off"
+          type: text
+          multiline: true
+      name: 選項
+      description: 提供訊息可操作的動作類型(限JSON格式)
+      default: >-
+        [{"type":"button","action":{"type":"uri","label":"打開連結","uri":"https://linecorp.com"}},{"type":"button","action":{"type":"uri","label":"撥打電話","uri":"tel:0987-654-321"}},{"type":"button","action":{"type":"message","label":"重啟設備","text":"/restart"}}]
+    debug:
+      selector:
+        boolean: null
+      name: 除錯模式
+      required: true
+    source:
+      selector:
+        template: {}
+      name: 來源
+      required: true
+      description: 識別訊息發佈來源
+      default: 智慧居家
+  sequence:
+    - choose:
+        - conditions:
+            - condition: template
+              value_template: "{{ detail is defined  and actions is defined  }}"
+          sequence:
+            - service: |
+                {% if debug %}
+                  notify.line_bot_jiatien
+                {% else %}
+                  notify.line_bot_family
+                {% endif %}
+              data:
+                message: >-
+                  {% set fields = {
+                    "type": "flex",
+                    "altText": alternative,
+                    "contents": {
+                      "type": "bubble",
+                      "header": {
+                        "type": "box",
+                        "layout": "vertical",
+                        "contents": [
+                          {
+                            "type": "box",
+                            "layout": "horizontal",
+                            "contents": [
+                              {
+                                "type": "text",
+                                "text": source,
+                                "weight": "bold",
+                                "size": "md",
+                                "align": "start",
+                                "gravity": "center"
+                              },
+                              {
+                                "type": "text",
+                                "text": title,
+                                "size": "sm",
+                                "color": "#0000FFFF",
+                                "align": "end",
+                                "gravity": "center"
+                              }
+                            ]
+                          },
+                          {
+                            "type": "text",
+                            "text": description
+                          }
+                        ]
+                      },
+                      "hero": {
+                        "type": "image",
+                        "url": "https://my.home-assistant.com/local/image/" + image,
+                        "align": "center",
+                        "gravity": "center",
+                        "size": "xxl",
+                        "aspectRatio": "1:1"
+                      },
+                      "body": {
+                        "type": "box",
+                        "layout": "vertical",
+                        "spacing": "md",
+                        "contents": [
+                          {
+                            "type": "text",
+                            "text": text,
+                            "weight": "bold",
+                            "size": "lg",
+                            "align": "center",
+                            "gravity": "top",
+                            "wrap": true
+                          },
+                          {
+                            "type": "separator"
+                          },
+                          {
+                            "type": "box",
+                            "layout": "vertical",
+                            "contents": '$' + detail + '$'
+                          }
+                        ]
+                      },
+                      "footer": {
+                        "type": "box",
+                        "layout": "vertical",
+                        "contents": '$' + actions + '$'
+                      }
+                    }
+                  } %} {% set output = {
+                    "messages": [fields]
+                  } %}
+                   {{ output|to_json|replace('"$', '')|replace('\\"',
+                  '"')|replace('$"', '') }}
+          alias: 更多資訊及動作按鈕
+        - conditions:
+            - condition: template
+              value_template: "{{ actions is defined }}"
+          sequence:
+            - service: |
+                {% if debug %}
+                  notify.line_bot_jiatien
+                {% else %}
+                  notify.line_bot_family
+                {% endif %}
+              data:
+                message: >-
+                  {% set fields = {
+                    "type": "flex",
+                    "altText": alternative,
+                    "contents": {
+                      "type": "bubble",
+                      "header": {
+                        "type": "box",
+                        "layout": "vertical",
+                        "contents": [
+                          {
+                            "type": "box",
+                            "layout": "horizontal",
+                            "contents": [
+                              {
+                                "type": "text",
+                                "text": source,
+                                "weight": "bold",
+                                "size": "md",
+                                "align": "start",
+                                "gravity": "center"
+                              },
+                              {
+                                "type": "text",
+                                "text": title,
+                                "size": "sm",
+                                "color": "#0000FFFF",
+                                "align": "end",
+                                "gravity": "center"
+                              }
+                            ]
+                          },
+                          {
+                            "type": "text",
+                            "text": description
+                          }
+                        ]
+                      },
+                      "hero": {
+                        "type": "image",
+                        "url": "https://my.home-assistant.com/local/image/" + image,
+                        "align": "center",
+                        "gravity": "center",
+                        "size": "xxl",
+                        "aspectRatio": "1:1"
+                      },
+                      "body": {
+                        "type": "box",
+                        "layout": "horizontal",
+                        "spacing": "md",
+                        "contents": [
+                          {
+                            "type": "text",
+                            "text": text,
+                            "weight": "bold",
+                            "size": "lg",
+                            "align": "center",
+                            "gravity": "top",
+                            "wrap": true
+                          }
+                        ]
+                      },
+                      "footer": {
+                        "type": "box",
+                        "layout": "vertical",
+                        "contents": '$' + actions + '$'
+                      }
+                    }
+                  } %} {% set output = {
+                    "messages": [fields]
+                  } %}
+                   {{ output|to_json|replace('"$', '')|replace('\\"',
+                  '"')|replace('$"', '') }}
+          alias: 動作按鈕
+        - conditions:
+            - condition: template
+              value_template: "{{ detail is defined }}"
+          sequence:
+            - service: |
+                {% if debug %}
+                  notify.line_bot_jiatien
+                {% else %}
+                  notify.line_bot_family
+                {% endif %}
+              data:
+                message: >-
+                  {% set fields = {
+                    "type": "flex",
+                    "altText": alternative,
+                    "contents": {
+                      "type": "bubble",
+                      "header": {
+                        "type": "box",
+                        "layout": "vertical",
+                        "contents": [
+                          {
+                            "type": "box",
+                            "layout": "horizontal",
+                            "contents": [
+                              {
+                                "type": "text",
+                                "text": source,
+                                "weight": "bold",
+                                "size": "md",
+                                "align": "start",
+                                "gravity": "center"
+                              },
+                              {
+                                "type": "text",
+                                "text": title,
+                                "size": "sm",
+                                "color": "#0000FFFF",
+                                "align": "end",
+                                "gravity": "center"
+                              }
+                            ]
+                          },
+                          {
+                            "type": "text",
+                            "text": description
+                          }
+                        ]
+                      },
+                      "hero": {
+                        "type": "image",
+                        "url": "https://my.home-assistant.com/local/image/" + image,
+                        "align": "center",
+                        "gravity": "center",
+                        "size": "xxl",
+                        "aspectRatio": "1:1"
+                      },
+                      "body": {
+                        "type": "box",
+                        "layout": "vertical",
+                        "spacing": "md",
+                        "contents": [
+                          {
+                            "type": "text",
+                            "text": text,
+                            "weight": "bold",
+                            "size": "lg",
+                            "align": "center",
+                            "gravity": "top",
+                            "wrap": true
+                          },
+                          {
+                            "type": "separator"
+                          },
+                          {
+                            "type": "box",
+                            "layout": "vertical",
+                            "contents": '$' + detail|string + '$'
+                          }
+                        ]
+                      },
+                      "footer": {
+                        "type": "box",
+                        "layout": "vertical",
+                        "contents": [{
+                          "type": "filler"
+                        }]
+                      }
+                    }
+                  } %} {% set output = {
+                    "messages": [fields]
+                  } %}
+                   {{ output|to_json|replace('"$', '')|replace('\\"',
+                  '"')|replace('$"', '') }}
+              enabled: true
+          alias: 更多資訊
+        - conditions:
+            - condition: template
+              value_template: "{{ not more and not actions }}"
+          sequence:
+            - service: |
+                {% if debug %}
+                  notify.line_bot_jiatien
+                {% else %}
+                  notify.line_bot_family
+                {% endif %}
+              data:
+                message: |-
+                  {% set fields = {
+                    "type": "flex",
+                    "altText": alternative,
+                    "contents": {
+                      "type": "bubble",
+                      "header": {
+                        "type": "box",
+                        "layout": "vertical",
+                        "contents": [
+                          {
+                            "type": "box",
+                            "layout": "horizontal",
+                            "contents": [
+                              {
+                                "type": "text",
+                                "text": source,
+                                "weight": "bold",
+                                "size": "md",
+                                "align": "start",
+                                "gravity": "center"
+                              },
+                              {
+                                "type": "text",
+                                "text": title,
+                                "size": "sm",
+                                "color": "#0000FFFF",
+                                "align": "end",
+                                "gravity": "center"
+                              }
+                            ]
+                          },
+                          {
+                            "type": "text",
+                            "text": description
+                          }
+                        ]
+                      },
+                      "hero": {
+                        "type": "image",
+                        "url": "https://my.home-assistant.com/local/image/" + image,
+                        "align": "center",
+                        "gravity": "center",
+                        "size": "xxl",
+                        "aspectRatio": "1:1"
+                      },
+                      "body": {
+                        "type": "box",
+                        "layout": "horizontal",
+                        "spacing": "md",
+                        "contents": [
+                          {
+                            "type": "text",
+                            "text": text,
+                            "weight": "bold",
+                            "size": "lg",
+                            "align": "center",
+                            "gravity": "top",
+                            "wrap": true
+                          }
+                        ]
+                      },
+                      "footer": {
+                        "type": "box",
+                        "layout": "horizontal",
+                        "contents": [{
+                          "type": "filler"
+                        }]
+                      }
+                    }
+                  } %} {% set output = {
+                    "messages": [fields]
+                  } %} {{ output|to_json }}
+          alias: FLEX MESSAGE
+  mode: queued
+  icon: mdi:cellphone-message

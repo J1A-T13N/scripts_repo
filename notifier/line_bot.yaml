@@ -1,0 +1,15 @@
+
+  # send to group
+  - name: line_bot_family
+    platform: line_bot
+    client_id: 取得方式請參閱下方連結
+    access_token: 取得方式請參閱下方連結
+
+  # send to JIATIEN
+  - name: line_bot_jiatien
+    platform: line_bot
+    client_id: 取得方式請參閱下方連結
+    access_token: 取得方式請參閱下方連結
+
+  # Person using Integration profile
+  # (see: https://github.com/osk2/line-bot#change-profile)

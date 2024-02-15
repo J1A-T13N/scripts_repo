@@ -1,0 +1,6 @@
+
+# Loads default set of integrations. Do not remove.
+default_config:
+
+# Notifier
+notify: !include_dir_merge_list notifier/
