@@ -47,7 +47,7 @@ line_bubble_template:
           "type": "separator",
           "margin": "md"
         } %}
-        ### 可以透過 filed 傳遞 list
+        ### 可以透過 filed 傳遞 list(發送前，請刪除此段)
         {%- set detail_flieds_example = {
           "author": "作者1",
           "message": "訊息1"
